@@ -138,47 +138,61 @@ alter table public.chat_reads enable row level security;
 alter table public.blocks enable row level security;
 
 -- Profiles: logged-in users can search profiles.
+drop policy if exists "profiles_select_authenticated" on public.profiles;
 create policy "profiles_select_authenticated"
 on public.profiles for select to authenticated using (true);
 
+drop policy if exists "profile_update_own" on public.profiles;
 create policy "profile_update_own"
 on public.profiles for update to authenticated
 using (id=auth.uid()) with check (id=auth.uid());
 
 -- Contacts
+drop policy if exists "contacts_own_select" on public.contacts;
 create policy "contacts_own_select"
 on public.contacts for select to authenticated using (owner_id=auth.uid());
+drop policy if exists "contacts_own_insert" on public.contacts;
 create policy "contacts_own_insert"
 on public.contacts for insert to authenticated with check (owner_id=auth.uid());
+drop policy if exists "contacts_own_update" on public.contacts;
 create policy "contacts_own_update"
 on public.contacts for update to authenticated using (owner_id=auth.uid()) with check (owner_id=auth.uid());
+drop policy if exists "contacts_own_delete" on public.contacts;
 create policy "contacts_own_delete"
 on public.contacts for delete to authenticated using (owner_id=auth.uid());
 
 -- Conversations: participants can access their conversations.
+drop policy if exists "conversation_participant_select" on public.conversations;
 create policy "conversation_participant_select"
 on public.conversations for select to authenticated
 using (user1=auth.uid() or user2=auth.uid());
+drop policy if exists "conversation_participant_insert" on public.conversations;
 create policy "conversation_participant_insert"
 on public.conversations for insert to authenticated
 with check (user1=auth.uid() or user2=auth.uid());
+drop policy if exists "conversation_participant_update" on public.conversations;
 create policy "conversation_participant_update"
 on public.conversations for update to authenticated
 using (user1=auth.uid() or user2=auth.uid())
 with check (user1=auth.uid() or user2=auth.uid());
 
 -- Chat members
+drop policy if exists "chat_members_own_select" on public.chat_members;
 create policy "chat_members_own_select"
 on public.chat_members for select to authenticated using (user_id=auth.uid());
+drop policy if exists "chat_members_own_insert" on public.chat_members;
 create policy "chat_members_own_insert"
 on public.chat_members for insert to authenticated
 with check (user_id=auth.uid());
+drop policy if exists "chat_members_own_update" on public.chat_members;
 create policy "chat_members_own_update"
 on public.chat_members for update to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
+drop policy if exists "chat_members_own_delete" on public.chat_members;
 create policy "chat_members_own_delete"
 on public.chat_members for delete to authenticated using (user_id=auth.uid());
 
 -- Messages: participants can read; sender can insert/update/delete.
+drop policy if exists "messages_participant_select" on public.messages;
 create policy "messages_participant_select"
 on public.messages for select to authenticated
 using (
@@ -188,6 +202,7 @@ using (
       and cm.user_id=auth.uid()
   )
 );
+drop policy if exists "messages_participant_insert" on public.messages;
 create policy "messages_participant_insert"
 on public.messages for insert to authenticated
 with check (
@@ -198,26 +213,34 @@ with check (
       and cm.user_id=auth.uid()
   )
 );
+drop policy if exists "messages_sender_update" on public.messages;
 create policy "messages_sender_update"
 on public.messages for update to authenticated
 using (sender_id=auth.uid()) with check (sender_id=auth.uid());
+drop policy if exists "messages_sender_delete" on public.messages;
 create policy "messages_sender_delete"
 on public.messages for delete to authenticated
 using (sender_id=auth.uid());
 
 -- Reads
+drop policy if exists "chat_reads_own" on public.chat_reads;
 create policy "chat_reads_own"
 on public.chat_reads for select to authenticated using (user_id=auth.uid());
+drop policy if exists "chat_reads_insert" on public.chat_reads;
 create policy "chat_reads_insert"
 on public.chat_reads for insert to authenticated with check (user_id=auth.uid());
+drop policy if exists "chat_reads_update" on public.chat_reads;
 create policy "chat_reads_update"
 on public.chat_reads for update to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
 
 -- Blocks
+drop policy if exists "blocks_own_select" on public.blocks;
 create policy "blocks_own_select"
 on public.blocks for select to authenticated using (blocker_id=auth.uid());
+drop policy if exists "blocks_own_insert" on public.blocks;
 create policy "blocks_own_insert"
 on public.blocks for insert to authenticated with check (blocker_id=auth.uid());
+drop policy if exists "blocks_own_delete" on public.blocks;
 create policy "blocks_own_delete"
 on public.blocks for delete to authenticated using (blocker_id=auth.uid());
 
@@ -230,6 +253,7 @@ insert into storage.buckets(id,name,public)
 values('talksy-media','talksy-media',true)
 on conflict(id) do update set public=true;
 
+drop policy if exists "talksy_media_upload_own_folder" on storage.objects;
 create policy "talksy_media_upload_own_folder"
 on storage.objects for insert to authenticated
 with check (
@@ -237,6 +261,7 @@ with check (
   and (storage.foldername(name))[1]=auth.uid()::text
 );
 
+drop policy if exists "talksy_media_update_own_folder" on storage.objects;
 create policy "talksy_media_update_own_folder"
 on storage.objects for update to authenticated
 using (
@@ -248,6 +273,7 @@ with check (
   and (storage.foldername(name))[1]=auth.uid()::text
 );
 
+drop policy if exists "talksy_media_delete_own_folder" on storage.objects;
 create policy "talksy_media_delete_own_folder"
 on storage.objects for delete to authenticated
 using (
@@ -256,6 +282,7 @@ using (
 );
 
 -- Public read is needed because the frontend uses getPublicUrl().
+drop policy if exists "talksy_media_public_read" on storage.objects;
 create policy "talksy_media_public_read"
 on storage.objects for select to public
 using (bucket_id='talksy-media');
