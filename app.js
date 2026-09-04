@@ -304,10 +304,11 @@ function bindEvents(){
     $("loginForm").classList.toggle("hidden",btn.dataset.authTab!=="login");$("signupForm").classList.toggle("hidden",btn.dataset.authTab!=="signup");
   });
   document.querySelectorAll(".password-toggle").forEach(b=>b.onclick=()=>{const i=$(b.dataset.target);i.type=i.type==="password"?"text":"password";b.textContent=i.type==="password"?"Show":"Hide"});
-  $("loginForm").onsubmit=async e=>{e.preventDefault();const phone=normalizePhone($("loginPhone").value);const {data,error}=await sb.auth.signInWithPassword({phone,password:$("loginPassword").value});if(error)toast(error.message,"error");else if(data.user)toast("Welcome back","success")};
-  $("signupForm").onsubmit=async e=>{e.preventDefault();const phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
-    const {data,error}=await sb.auth.signUp({phone,password,options:{data:{display_name:name}}});
-    if(error)toast(error.message,"error");else if(data.session){toast("Account created","success")}else toast("Account created. If Supabase asks for phone verification, disable phone verification in Authentication settings for the no-OTP setup.","info");
+  $("loginForm").onsubmit=async e=>{e.preventDefault();const email=$("loginEmail").value.trim();const {data,error}=await sb.auth.signInWithPassword({email,password:$("loginPassword").value});if(error)toast(error.message,"error");else if(data.user)toast("Welcome back","success")};
+  $("signupForm").onsubmit=async e=>{e.preventDefault();const email=$("signupEmail").value.trim(),phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
+    if(!phone){toast("Phone number is required","error");return}
+    const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name,phone}}});
+    if(error)toast(error.message,"error");else if(data.session){toast("Account created","success")}else toast("Account created. If Supabase asks you to confirm your email, check your inbox — or disable email confirmation in Authentication settings for instant login.","info");
   };
   $("themeBtn").onclick=()=>{state.theme=state.theme==="day"?"night":"day";applyTheme()};
   $("profileBtn").onclick=()=>openModal("profileModal");
