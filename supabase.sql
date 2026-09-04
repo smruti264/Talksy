@@ -96,7 +96,10 @@ left join public.contacts c
 
 -- ------------------------------------------------------------
 -- Trigger: create profile automatically after Auth signup.
--- The phone number comes from auth.users.phone.
+-- Talksy now authenticates with EMAIL + PASSWORD.
+-- The phone number is only a public ID (not verified, not used
+-- for login) and is passed in at signUp() time inside
+-- options.data.phone (raw_user_meta_data).
 -- ------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger
@@ -108,11 +111,11 @@ begin
   insert into public.profiles(id,phone,display_name)
   values(
     new.id,
-    coalesce(new.phone,''),
+    coalesce(new.raw_user_meta_data->>'phone',new.phone,''),
     coalesce(new.raw_user_meta_data->>'display_name','Talksy User')
   )
   on conflict (id) do update
-  set phone=excluded.phone,
+  set phone=coalesce(nullif(public.profiles.phone,''),excluded.phone),
       display_name=coalesce(nullif(public.profiles.display_name,''),excluded.display_name);
   return new;
 end;
