@@ -8,8 +8,8 @@ Talksy is a WhatsApp-style multi-user chat web app built for GitHub Pages with:
 - Supabase Storage
 - Supabase Realtime
 - Responsive laptop/tablet/mobile UI
-- Email + password login
-- Phone number used as a public ID only (not for login, not OTP-verified)
+- Phone number + password login
+- No OTP flow — phone number works purely as a login ID
 - DP/profile picture upload
 - Search users by phone number
 - Saved contact names
@@ -58,21 +58,20 @@ The SQL creates:
 
 If you already ran an older version of this SQL that used phone-based auth, it is safe to run the updated file again — table creation uses `if not exists` and the trigger function is replaced with `create or replace function`.
 
-## 3. Enable email + password authentication (no OTP)
+## 3. Enable Email provider (required internally — users never see it)
 
-Talksy authenticates with **email + password**. Phone number is only stored as a public ID field on the profile, so other users can find you by phone — it is not used to sign in and is never OTP-verified.
+Talksy's screens only ever ask for **phone number + password** — exactly like you asked, with no OTP anywhere. Under the hood, Supabase Auth still needs an email address for every account, so the app automatically builds one from the phone number (e.g. `919876543210@talksy.local`) and uses it invisibly. The user never sees or types this — they only ever use their phone number.
 
-In Supabase:
+Because of that, you must:
 
-**Authentication → Providers → Email**
+**Authentication → Providers → Email** → make sure Email is **enabled**.
 
-Make sure Email is enabled.
+**Authentication → Settings** (label may say "Confirm email" or similar) → turn this **OFF**.
+This step is mandatory. The auto-generated email addresses are fake and can never receive a real confirmation link — if "Confirm email" stays ON, every new account will be stuck forever and can never log in.
 
-**Authentication → Settings** (or **Providers → Email** depending on your Supabase version): if you want instant login right after signup (no confirmation email step), turn OFF "Confirm email". If you leave it ON, users must click the link sent to their inbox before they can log in.
+You do **not** need to touch the Phone provider at all — Talksy no longer uses it, which is exactly what avoids the old SMS-provider error during registration.
 
-Talksy uses `signUp({ email, password, options: { data: { display_name, phone } } })` and `signInWithPassword({ email, password })`.
-
-This avoids the common registration failure caused by Supabase's Phone provider requiring a configured SMS provider (e.g. Twilio) even when phone verification is disabled.
+Talksy uses `signUp({ email: <derived from phone>, password, options: { data: { display_name, phone } } })` and `signInWithPassword({ email: <derived from phone>, password })` — the phone number itself is what's stored on the profile and what's used for searching/finding other users.
 
 ## 4. Add Supabase credentials
 
@@ -103,12 +102,10 @@ Example:
 
 ```text
 User A
-Email: usera@example.com
 Phone: +919876543210
 Password: test1234
 
 User B
-Email: userb@example.com
 Phone: +919876543211
 Password: test1234
 ```
@@ -232,10 +229,13 @@ Check `config.js`.
 Run the complete `supabase.sql` in Supabase SQL Editor.
 
 ### Register fails / "Signups not allowed" / phone provider errors
-Make sure **Authentication → Providers → Email** is enabled. Talksy no longer uses the Phone provider, so no SMS provider (Twilio, etc.) is required.
+Make sure **Authentication → Providers → Email** is enabled. Talksy stores your phone number as your login ID but authenticates through Supabase's Email provider behind the scenes, so no SMS provider (Twilio, etc.) is required, and the Phone provider does not need to be touched.
 
-### Users can sign up but cannot log in right away
-Check **Authentication → Settings** — if "Confirm email" is ON, the user must click the confirmation link in their inbox first. Turn it OFF for instant login during testing.
+### Account created but you can never log in afterwards
+This means **"Confirm email" is still ON** in Authentication settings. Since Talksy generates a fake internal email for each phone number, it can never receive a real confirmation link, so the account stays stuck unconfirmed. Turn "Confirm email" OFF in **Authentication → Settings**.
+
+### "User already registered"
+That phone number already has an account. Try logging in instead, or use a different phone number.
 
 ### Messages do not appear live
 Make sure `messages` is enabled in Supabase Realtime. The SQL includes:
