@@ -8,8 +8,8 @@ Talksy is a WhatsApp-style multi-user chat web app built for GitHub Pages with:
 - Supabase Storage
 - Supabase Realtime
 - Responsive laptop/tablet/mobile UI
-- Phone + password login
-- No OTP flow in the frontend
+- Email + password login
+- Phone number used as a public ID only (not for login, not OTP-verified)
 - DP/profile picture upload
 - Search users by phone number
 - Saved contact names
@@ -56,21 +56,23 @@ The SQL creates:
 - profile creation trigger
 - Realtime configuration
 
-## 3. Enable phone + password authentication WITHOUT OTP
+If you already ran an older version of this SQL that used phone-based auth, it is safe to run the updated file again — table creation uses `if not exists` and the trigger function is replaced with `create or replace function`.
+
+## 3. Enable email + password authentication (no OTP)
+
+Talksy authenticates with **email + password**. Phone number is only stored as a public ID field on the profile, so other users can find you by phone — it is not used to sign in and is never OTP-verified.
 
 In Supabase:
 
-**Authentication → Providers → Phone**
+**Authentication → Providers → Email**
 
-Enable Phone.
+Make sure Email is enabled.
 
-Talksy uses `signUp({ phone, password })` and `signInWithPassword({ phone, password })`.
+**Authentication → Settings** (or **Providers → Email** depending on your Supabase version): if you want instant login right after signup (no confirmation email step), turn OFF "Confirm email". If you leave it ON, users must click the link sent to their inbox before they can log in.
 
-For the requested no-OTP setup, configure Supabase so phone verification is NOT required. Supabase dashboard labels can change over time, so look for the phone provider's verification/confirmation setting and disable mandatory phone verification.
+Talksy uses `signUp({ email, password, options: { data: { display_name, phone } } })` and `signInWithPassword({ email, password })`.
 
-Important: this means a phone number is being used as an account identifier, not as proof that the user owns that number.
-
-Do NOT enable an SMS OTP requirement if you want the exact flow requested here.
+This avoids the common registration failure caused by Supabase's Phone provider requiring a configured SMS provider (e.g. Twilio) even when phone verification is disabled.
 
 ## 4. Add Supabase credentials
 
@@ -101,10 +103,12 @@ Example:
 
 ```text
 User A
+Email: usera@example.com
 Phone: +919876543210
 Password: test1234
 
 User B
+Email: userb@example.com
 Phone: +919876543211
 Password: test1234
 ```
@@ -217,6 +221,7 @@ For a production-grade Talksy, add:
 10. Image compression and thumbnails
 11. Pagination/infinite scroll for messages
 12. Better unread-count tracking
+13. Phone number ownership verification (SMS OTP) if you need it later
 
 ## 12. Troubleshooting
 
@@ -226,8 +231,11 @@ Check `config.js`.
 ### "relation does not exist"
 Run the complete `supabase.sql` in Supabase SQL Editor.
 
-### Users can sign up but cannot log in
-Check Supabase Phone provider configuration and whether phone confirmation is being required.
+### Register fails / "Signups not allowed" / phone provider errors
+Make sure **Authentication → Providers → Email** is enabled. Talksy no longer uses the Phone provider, so no SMS provider (Twilio, etc.) is required.
+
+### Users can sign up but cannot log in right away
+Check **Authentication → Settings** — if "Confirm email" is ON, the user must click the confirmation link in their inbox first. Turn it OFF for instant login during testing.
 
 ### Messages do not appear live
 Make sure `messages` is enabled in Supabase Realtime. The SQL includes:
