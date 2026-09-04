@@ -30,6 +30,10 @@ const fmtTime = (d) => new Date(d).toLocaleTimeString([], {hour:"2-digit",minute
 const fmtDate = (d) => new Date(d).toLocaleDateString([], {day:"2-digit",month:"short"});
 const initials = (name="U") => name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase() || "U";
 const normalizePhone = (p) => p.replace(/[^\d+]/g,"").trim();
+// Talksy shows only "phone number + password" to the user (no email, no OTP).
+// Internally Supabase Auth needs an email, so we derive one deterministically
+// from the phone number. This is never shown to the user.
+const phoneToAuthEmail = (phone) => `${phone.replace(/[^\d]/g,"")}@talksy.local`;
 
 function toast(msg, type="info") {
   const el = document.createElement("div");
@@ -316,23 +320,29 @@ function bindEvents(){
   document.querySelectorAll(".password-toggle").forEach(b=>b.onclick=()=>{const i=$(b.dataset.target);i.type=i.type==="password"?"text":"password";b.textContent=i.type==="password"?"Show":"Hide"});
   $("loginForm").onsubmit=async e=>{
     e.preventDefault();
-    const email=$("loginEmail").value.trim();
+    const phone=normalizePhone($("loginPhone").value);
+    if(!phone){toast("Enter your phone number","error");return}
     try{
-      const {data,error}=await sb.auth.signInWithPassword({email,password:$("loginPassword").value});
-      if(error){console.error("Login error:",error);toast(error.message,"error");}
+      const {data,error}=await sb.auth.signInWithPassword({email:phoneToAuthEmail(phone),password:$("loginPassword").value});
+      if(error){console.error("Login error:",error);toast(error.message==="Invalid login credentials"?"Wrong phone number or password.":error.message,"error");}
       else if(data.user)toast("Welcome back","success");
     }catch(err){console.error("Login exception:",err);toast(err.message||"Login failed. Check console for details.","error");}
   };
   $("signupForm").onsubmit=async e=>{
     e.preventDefault();
-    const email=$("signupEmail").value.trim(),phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
+    const phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
     if(!phone){toast("Phone number is required","error");return}
     if(!cfg.SUPABASE_URL||cfg.SUPABASE_URL.includes("YOUR-PROJECT")){toast("Supabase is not configured. Check config.js.","error");return}
     try{
-      const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name,phone}}});
-      if(error){console.error("Signup error:",error);toast(error.message,"error");}
-      else if(data.session){toast("Account created","success");}
-      else toast("Account created. If Supabase asks you to confirm your email, check your inbox — or disable email confirmation in Authentication settings for instant login.","info");
+      const {data,error}=await sb.auth.signUp({email:phoneToAuthEmail(phone),password,options:{data:{display_name:name,phone}}});
+      if(error){
+        console.error("Signup error:",error);
+        toast(error.message.includes("already registered")?"This phone number is already registered.":error.message,"error");
+      }else if(data.session){
+        toast("Account created","success");
+      }else{
+        toast("Account created, but login didn't start automatically. Make sure 'Confirm email' is turned OFF in Supabase Authentication settings, then try logging in.","info");
+      }
     }catch(err){console.error("Signup exception:",err);toast(err.message||"Sign up failed. Check console for details.","error");}
   };
   $("themeBtn").onclick=()=>{state.theme=state.theme==="day"?"night":"day";applyTheme()};
