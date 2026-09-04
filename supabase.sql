@@ -289,6 +289,16 @@ using (bucket_id='talksy-media');
 
 -- ------------------------------------------------------------
 -- Realtime
--- Add messages to the realtime publication.
+-- Add messages to the realtime publication (only if not already added).
 -- ------------------------------------------------------------
-alter publication supabase_realtime add table public.messages;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
