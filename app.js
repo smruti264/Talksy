@@ -5,6 +5,16 @@ const cfg = window.TALKSY_CONFIG || {};
 if (!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes("YOUR-PROJECT")) {
   console.warn("Add your Supabase URL and anon key in config.js.");
 }
+if (!window.supabase) {
+  console.error("Supabase JS library did not load. Check your internet connection or ad-blocker, and make sure the <script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'> tag loads before app.js.");
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.createElement("div");
+    el.style.cssText = "position:fixed;top:0;left:0;right:0;padding:12px;background:#ff4d6d;color:#fff;font:14px system-ui;text-align:center;z-index:9999";
+    el.textContent = "Failed to load required library (Supabase JS). Check your internet connection and reload the page.";
+    document.body.prepend(el);
+  });
+  throw new Error("Supabase JS library not found on window.supabase");
+}
 const { createClient } = window.supabase;
 const sb = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
 
@@ -304,11 +314,26 @@ function bindEvents(){
     $("loginForm").classList.toggle("hidden",btn.dataset.authTab!=="login");$("signupForm").classList.toggle("hidden",btn.dataset.authTab!=="signup");
   });
   document.querySelectorAll(".password-toggle").forEach(b=>b.onclick=()=>{const i=$(b.dataset.target);i.type=i.type==="password"?"text":"password";b.textContent=i.type==="password"?"Show":"Hide"});
-  $("loginForm").onsubmit=async e=>{e.preventDefault();const email=$("loginEmail").value.trim();const {data,error}=await sb.auth.signInWithPassword({email,password:$("loginPassword").value});if(error)toast(error.message,"error");else if(data.user)toast("Welcome back","success")};
-  $("signupForm").onsubmit=async e=>{e.preventDefault();const email=$("signupEmail").value.trim(),phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
+  $("loginForm").onsubmit=async e=>{
+    e.preventDefault();
+    const email=$("loginEmail").value.trim();
+    try{
+      const {data,error}=await sb.auth.signInWithPassword({email,password:$("loginPassword").value});
+      if(error){console.error("Login error:",error);toast(error.message,"error");}
+      else if(data.user)toast("Welcome back","success");
+    }catch(err){console.error("Login exception:",err);toast(err.message||"Login failed. Check console for details.","error");}
+  };
+  $("signupForm").onsubmit=async e=>{
+    e.preventDefault();
+    const email=$("signupEmail").value.trim(),phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
     if(!phone){toast("Phone number is required","error");return}
-    const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name,phone}}});
-    if(error)toast(error.message,"error");else if(data.session){toast("Account created","success")}else toast("Account created. If Supabase asks you to confirm your email, check your inbox — or disable email confirmation in Authentication settings for instant login.","info");
+    if(!cfg.SUPABASE_URL||cfg.SUPABASE_URL.includes("YOUR-PROJECT")){toast("Supabase is not configured. Check config.js.","error");return}
+    try{
+      const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name,phone}}});
+      if(error){console.error("Signup error:",error);toast(error.message,"error");}
+      else if(data.session){toast("Account created","success");}
+      else toast("Account created. If Supabase asks you to confirm your email, check your inbox — or disable email confirmation in Authentication settings for instant login.","info");
+    }catch(err){console.error("Signup exception:",err);toast(err.message||"Sign up failed. Check console for details.","error");}
   };
   $("themeBtn").onclick=()=>{state.theme=state.theme==="day"?"night":"day";applyTheme()};
   $("profileBtn").onclick=()=>openModal("profileModal");
