@@ -66,8 +66,8 @@ Because of that, you must:
 
 **Authentication → Providers → Email** → make sure Email is **enabled**.
 
-**Authentication → Settings** (label may say "Confirm email" or similar) → turn this **OFF**.
-This step is mandatory. The auto-generated email addresses are fake and can never receive a real confirmation link — if "Confirm email" stays ON, every new account will be stuck forever and can never log in.
+**Authentication → Sign In / Providers → Email** → find the "Confirm email" toggle and turn it **OFF**, then save.
+This step is mandatory. The auto-generated email addresses are fake and can never receive a real confirmation link — if "Confirm email" stays ON, every new account will be stuck forever and can never log in, and repeated signups will also hit Supabase's built-in email rate limit.
 
 You do **not** need to touch the Phone provider at all — Talksy no longer uses it, which is exactly what avoids the old SMS-provider error during registration.
 
@@ -232,7 +232,10 @@ Run the complete `supabase.sql` in Supabase SQL Editor.
 Make sure **Authentication → Providers → Email** is enabled. Talksy stores your phone number as your login ID but authenticates through Supabase's Email provider behind the scenes, so no SMS provider (Twilio, etc.) is required, and the Phone provider does not need to be touched.
 
 ### Account created but you can never log in afterwards
-This means **"Confirm email" is still ON** in Authentication settings. Since Talksy generates a fake internal email for each phone number, it can never receive a real confirmation link, so the account stays stuck unconfirmed. Turn "Confirm email" OFF in **Authentication → Settings**.
+This means **"Confirm email" is still ON** in Authentication settings. Since Talksy generates a fake internal email for each phone number, it can never receive a real confirmation link, so the account stays stuck unconfirmed. Turn "Confirm email" OFF in **Authentication → Sign In / Providers → Email**.
+
+### "Email rate limit exceeded" during signup
+This happens when Supabase tries (and keeps retrying) to send a confirmation email — which only occurs if "Confirm email" is still ON. Turn it OFF as described above, then wait a few minutes for the rate limit to reset before trying again. Talksy's signup code no longer needs any email to actually be sent.
 
 ### "User already registered"
 That phone number already has an account. Try logging in instead, or use a different phone number.
