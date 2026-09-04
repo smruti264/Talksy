@@ -35,6 +35,48 @@ const normalizePhone = (p) => p.replace(/[^\d+]/g,"").trim();
 // from the phone number. This is never shown to the user.
 const phoneToAuthEmail = (phone) => `${phone.replace(/[^\d]/g,"")}@talksy.local`;
 
+function handleAuthError(error,context){
+  const msg=(error?.message||"").toLowerCase();
+  if(msg.includes("rate limit")){
+    toast("Too many attempts right now — Supabase's free email limit was hit. Wait a few minutes and try again, and double check 'Confirm email' is OFF in Authentication → Sign In / Providers → Email.","error");
+    return;
+  }
+  if(msg.includes("already registered")||msg.includes("already exists")){
+    toast("This phone number is already registered. Try logging in instead.","error");
+    return;
+  }
+  if(msg.includes("invalid login credentials")){
+    toast("Wrong phone number or password.","error");
+    return;
+  }
+  if(msg.includes("email not confirmed")){
+    toast("This account needs email confirmation, which Talksy doesn't support. Turn 'Confirm email' OFF in Supabase Authentication → Sign In / Providers → Email, then delete this user and sign up again.","error");
+    return;
+  }
+  toast(error?.message||`${context==="signup"?"Sign up":"Login"} failed.`,"error");
+}
+async function attemptLogin(phone,password,showOwnErrors){
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email:phoneToAuthEmail(phone),password});
+    if(error){
+      console.error("Login error:",error);
+      if(showOwnErrors){
+        handleAuthError(error,"login");
+      }else{
+        // This runs right after a signup with no session — most likely cause
+        // is that "Confirm email" is still ON in Supabase.
+        toast("Account created, but couldn't log in automatically. Make sure 'Confirm email' is OFF in Supabase Authentication → Sign In / Providers → Email, then try logging in.","info");
+      }
+      return false;
+    }
+    if(data.user){ if(showOwnErrors)toast("Welcome back","success"); else toast("Account created","success"); return true; }
+    return false;
+  }catch(err){
+    console.error("Login exception:",err);
+    toast(err.message||"Login failed. Check console for details.","error");
+    return false;
+  }
+}
 function toast(msg, type="info") {
   const el = document.createElement("div");
   el.className = `toast ${type}`;
@@ -322,28 +364,32 @@ function bindEvents(){
     e.preventDefault();
     const phone=normalizePhone($("loginPhone").value);
     if(!phone){toast("Enter your phone number","error");return}
-    try{
-      const {data,error}=await sb.auth.signInWithPassword({email:phoneToAuthEmail(phone),password:$("loginPassword").value});
-      if(error){console.error("Login error:",error);toast(error.message==="Invalid login credentials"?"Wrong phone number or password.":error.message,"error");}
-      else if(data.user)toast("Welcome back","success");
-    }catch(err){console.error("Login exception:",err);toast(err.message||"Login failed. Check console for details.","error");}
+    await attemptLogin(phone,$("loginPassword").value,true);
   };
   $("signupForm").onsubmit=async e=>{
     e.preventDefault();
     const phone=normalizePhone($("signupPhone").value),name=$("signupName").value.trim(),password=$("signupPassword").value;
     if(!phone){toast("Phone number is required","error");return}
+    if(!name){toast("Display name is required","error");return}
+    if(!password||password.length<6){toast("Password must be at least 6 characters","error");return}
     if(!cfg.SUPABASE_URL||cfg.SUPABASE_URL.includes("YOUR-PROJECT")){toast("Supabase is not configured. Check config.js.","error");return}
+    const submitBtn=e.target.querySelector('button[type="submit"]');
+    if(submitBtn)submitBtn.disabled=true;
     try{
       const {data,error}=await sb.auth.signUp({email:phoneToAuthEmail(phone),password,options:{data:{display_name:name,phone}}});
       if(error){
         console.error("Signup error:",error);
-        toast(error.message.includes("already registered")?"This phone number is already registered.":error.message,"error");
+        handleAuthError(error,"signup");
       }else if(data.session){
         toast("Account created","success");
       }else{
-        toast("Account created, but login didn't start automatically. Make sure 'Confirm email' is turned OFF in Supabase Authentication settings, then try logging in.","info");
+        // No error and no session: most Supabase projects still return this
+        // right after signUp even when email confirmation is OFF. Follow up
+        // with an explicit login using the same credentials.
+        await attemptLogin(phone,password,false);
       }
     }catch(err){console.error("Signup exception:",err);toast(err.message||"Sign up failed. Check console for details.","error");}
+    finally{if(submitBtn)submitBtn.disabled=false;}
   };
   $("themeBtn").onclick=()=>{state.theme=state.theme==="day"?"night":"day";applyTheme()};
   $("profileBtn").onclick=()=>openModal("profileModal");
