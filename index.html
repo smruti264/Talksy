@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0d0b16" />
+  <title>Talksy — Private Messaging</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="toastContainer" class="toast-container"></div>
+
+  <section id="authScreen" class="screen auth-screen">
+    <div class="auth-glow glow-one"></div>
+    <div class="auth-glow glow-two"></div>
+    <div class="auth-card glass">
+      <div class="brand-mark">T</div>
+      <h1>Talksy</h1>
+      <p class="subtitle">Simple. Private. Connected.</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-tab="login">Login</button>
+        <button class="auth-tab" data-auth-tab="signup">Create account</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <label>Phone number</label>
+        <input id="loginPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+91 1111111111" required />
+        <label>Password</label>
+        <div class="password-wrap">
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password" required />
+          <button type="button" class="password-toggle" data-target="loginPassword">Show</button>
+        </div>
+        <button class="primary-btn full" type="submit">Login</button>
+      </form>
+
+      <form id="signupForm" class="auth-form hidden">
+        <label>Phone number</label>
+        <input id="signupPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+91 9876543210" required />
+        <label>Display name</label>
+        <input id="signupName" type="text" maxlength="60" placeholder="Your name" required />
+        <label>Password</label>
+        <div class="password-wrap">
+          <input id="signupPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters" required />
+          <button type="button" class="password-toggle" data-target="signupPassword">Show</button>
+        </div>
+        <button class="primary-btn full" type="submit">Create account</button>
+      </form>
+
+      <p class="auth-note">No OTP is used by this Talksy frontend. Configure Supabase phone/password authentication as described in README.</p>
+    </div>
+  </section>
+
+  <section id="appScreen" class="app-shell hidden">
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <div class="me-avatar avatar" id="myAvatar">T</div>
+        <div class="me-info">
+          <strong id="myName">Talksy User</strong>
+          <span id="myPhone">—</span>
+        </div>
+        <button class="icon-btn" id="themeBtn" title="Day / night mode">☾</button>
+        <button class="icon-btn" id="profileBtn" title="Profile">⋮</button>
+      </header>
+
+      <div class="chat-search-row">
+        <div class="search-box">
+          <span>⌕</span>
+          <input id="chatSearch" type="search" placeholder="Search name or phone..." />
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="all">ALL</button>
+        <button class="filter-btn" data-filter="read">READ</button>
+        <button class="filter-btn" data-filter="unread">UNREAD</button>
+      </div>
+
+      <div class="sidebar-actions">
+        <button id="newChatBtn" class="secondary-btn">＋ New chat</button>
+        <button id="blockListBtn" class="secondary-btn">▣ Block list</button>
+      </div>
+
+      <div id="chatList" class="chat-list"></div>
+    </aside>
+
+    <main class="chat-panel">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-logo">T</div>
+        <h2>Welcome to Talksy</h2>
+        <p>Search a phone number or start a new chat.</p>
+      </div>
+
+      <section id="conversationView" class="conversation hidden">
+        <header class="conversation-header">
+          <button id="backBtn" class="icon-btn mobile-only">‹</button>
+          <div class="avatar" id="activeAvatar">U</div>
+          <div class="active-user-info">
+            <strong id="activeName">User</strong>
+            <span id="activePhone">—</span>
+          </div>
+          <div class="conversation-actions">
+            <button id="activeSearchBtn" class="icon-btn" title="Search messages">⌕</button>
+            <button id="activeMenuBtn" class="icon-btn" title="Chat options">⋮</button>
+          </div>
+        </header>
+
+        <div id="messageSearchBar" class="message-search hidden">
+          <input id="messageSearchInput" type="search" placeholder="Search messages..." />
+          <button id="closeMessageSearch" class="icon-btn">×</button>
+        </div>
+
+        <div id="messages" class="messages"></div>
+
+        <div id="uploadPreview" class="upload-preview hidden"></div>
+
+        <form id="messageForm" class="message-composer">
+          <input id="mediaInput" type="file" hidden multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" />
+          <button type="button" id="attachBtn" class="icon-btn composer-btn" title="Attach media">＋</button>
+          <textarea id="messageInput" rows="1" maxlength="5000" placeholder="Type a message..."></textarea>
+          <button type="submit" class="send-btn" title="Send">➤</button>
+        </form>
+      </section>
+    </main>
+  </section>
+
+  <div id="profileModal" class="modal hidden">
+    <div class="modal-card glass">
+      <div class="modal-head"><h3>My profile</h3><button class="icon-btn close-modal">×</button></div>
+      <div class="profile-edit">
+        <div class="large-avatar avatar" id="profileAvatar">T</div>
+        <label class="secondary-btn file-label">Change DP
+          <input id="dpInput" type="file" accept="image/*" hidden />
+        </label>
+      </div>
+      <label>Name</label>
+      <input id="profileNameInput" maxlength="60" />
+      <label>Phone</label>
+      <input id="profilePhoneInput" disabled />
+      <button id="saveProfileBtn" class="primary-btn full">Save changes</button>
+    </div>
+  </div>
+
+  <div id="newChatModal" class="modal hidden">
+    <div class="modal-card glass">
+      <div class="modal-head"><h3>Find someone</h3><button class="icon-btn close-modal">×</button></div>
+      <p class="modal-help">Search by the exact registered phone number.</p>
+      <div class="search-box modal-search">
+        <span>⌕</span><input id="userSearchInput" type="tel" placeholder="+91..." />
+      </div>
+      <div id="userSearchResults" class="user-results"></div>
+    </div>
+  </div>
+
+  <div id="blockListModal" class="modal hidden">
+    <div class="modal-card glass">
+      <div class="modal-head"><h3>Blocked users</h3><button class="icon-btn close-modal">×</button></div>
+      <div id="blockList" class="block-list"></div>
+    </div>
+  </div>
+
+  <div id="chatMenu" class="floating-menu hidden">
+    <button data-action="archive">Archive chat</button>
+    <button data-action="clear">Clear chat</button>
+    <button data-action="delete">Delete chat</button>
+    <button data-action="block" id="blockMenuBtn">Block</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

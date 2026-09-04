@@ -1,0 +1,7 @@
+# Do not commit local secrets or editor files
+.env
+.env.*
+.DS_Store
+.vscode/
+.idea/
+node_modules/
